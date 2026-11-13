@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GMusic Event Check-in</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f4f6f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
+        .container { background: #ffffff; width: 100%; max-width: 420px; border-radius: 16px; padding: 28px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
+        .title { color: #0068ff; font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+        .subtitle { color: #666; font-size: 14px; margin-bottom: 24px; line-height: 1.4; }
+        .btn { display: block; width: 100%; padding: 15px; margin-bottom: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-step { background-color: #0068ff; color: white; }
+        .btn-step:active { transform: scale(0.98); }
+        .btn-done { background-color: #e8f3ff; color: #0068ff; border: 1px solid #b3d7ff; }
+        .btn-confirm { background-color: #e53935; color: white; margin-top: 20px; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-confirm:disabled { background-color: #cccccc; color: #888888; cursor: not-allowed; }
+        .success-box { display: none; background: #e8f5e9; border: 2px solid #4caf50; border-radius: 14px; padding: 28px 16px; }
+        .success-title { color: #2e7d32; font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+        .success-text { color: #333; font-size: 15px; line-height: 1.5; margin-bottom: 12px; }
+        .success-note { color: #666; font-size: 13px; }
+        .footer { margin-top: 24px; font-size: 12px; color: #999; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="step-section">
+        <div class="title">GMUSIC CHECK-IN</div>
+        <div class="subtitle">Hoàn thành 3 bước bên dưới để nhận xác nhận tham dự sự kiện</div>
+
+        <!-- Bước 1: Zalo OA -->
+        <button id="btn-zalo" class="btn btn-step" onclick="openZaloApp()">
+            1. Nhấn Quan tâm Zalo OA
+        </button>
+
+        <!-- Bước 2: Google Review -->
+        <button id="btn-google" class="btn btn-step" onclick="openGoogleMapsApp()">
+            2. Đánh giá 5★ trên Google
+        </button>
+
+        <!-- Bước 3: Fanpage Facebook -->
+        <button id="btn-fb" class="btn btn-step" onclick="openFacebookApp()">
+            3. Like/Follow Fanpage Facebook
+        </button>
+
+        <!-- Nút xác nhận -->
+        <button id="btn-confirm" class="btn btn-confirm" disabled onclick="finishCheckin()">
+            Xác nhận Check-in
+        </button>
+    </div>
+
+    <!-- Màn hình thành công -->
+    <div id="success-section" class="success-box">
+        <div class="success-title">CHECK-IN THÀNH CÔNG! 🎉</div>
+        <div class="success-text">Cảm ơn bạn đã tham gia sự kiện cùng GMusic.</div>
+        <div class="success-note">Vui lòng xuất trình màn hình này tại quầy lễ tân để nhận quà/vé.</div>
+    </div>
+
+    <div class="footer">Powered by GMusic JSC</div>
+</div>
+
+<script>
+    // ==========================================
+    // CẤU HÌNH THÔNG TIN CỦA GMUSIC TẠI ĐÂY
+    // ==========================================
+    const CONFIG = {
+        zaloOaId: "3134714042803200014", // Dãy số ID của Zalo OA
+        googleReviewUrl: "https://g.page/r/CSHPfOmaXHcBEBM/review", // Dạng https://g.page/r/.../review
+        fbPageId: "100064438402167", // Dãy số ID của Fanpage (vd: 100063547891234)
+        fbWebUrl: "https://www.facebook.com/GMusicVNOfficial" // Link web dự phòng
+    };
+
+    let steps = { 1: false, 2: false, 3: false };
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+
+    // Hàm hỗ trợ kích hoạt Deep Link và tự mở link web dự phòng nếu không có app
+    function triggerDeepLink(appUri, fallbackUrl) {
+        const start = Date.now();
+        window.location.href = appUri;
+
+        setTimeout(() => {
+            // Nếu sau 1.5s người dùng vẫn ở trên trình duyệt (do chưa cài app) thì mở link web
+            if (Date.now() - start < 2000) {
+                window.open(fallbackUrl, '_blank');
+            }
+        }, 1500);
+    }
+
+    // 1. Mở thẳng App Zalo -> Trang OA
+    function openZaloApp() {
+        const fallback = `https://zalo.me/${CONFIG.zaloOaId}`;
+        const appUri = `zalo://oa?id=${CONFIG.zaloOaId}`;
+        
+        if (isIOS || isAndroid) {
+            triggerDeepLink(appUri, fallback);
+        } else {
+            window.open(fallback, '_blank');
+        }
+        completeStep(1);
+    }
+
+    // 2. Mở thẳng App Google Maps -> Khung đánh giá
+    function openGoogleMapsApp() {
+        if (isIOS) {
+            // Trên iOS ưu tiên gọi scheme comgooglemaps nếu có, không thì mở Safari (Safari tự chuyển sang app Maps)
+            window.location.href = CONFIG.googleReviewUrl;
+        } else if (isAndroid) {
+            // Trên Android dùng intent để ép mở thẳng app Google Maps
+            const cleanUrl = CONFIG.googleReviewUrl.replace(/^https?:\/\//, '');
+            const intentUri = `intent://${cleanUrl}#Intent;scheme=https;package=com.google.android.apps.maps;end`;
+            triggerDeepLink(intentUri, CONFIG.googleReviewUrl);
+        } else {
+            window.open(CONFIG.googleReviewUrl, '_blank');
+        }
+        completeStep(2);
+    }
+
+    // 3. Mở thẳng App Facebook -> Trang Fanpage
+    function openFacebookApp() {
+        if (isIOS) {
+            triggerDeepLink(`fb://profile/${CONFIG.fbPageId}`, CONFIG.fbWebUrl);
+        } else if (isAndroid) {
+            triggerDeepLink(`fb://page/${CONFIG.fbPageId}`, CONFIG.fbWebUrl);
+        } else {
+            window.open(CONFIG.fbWebUrl, '_blank');
+        }
+        completeStep(3);
+    }
+
+    // Cập nhật trạng thái nút bấm
+    function completeStep(stepNumber) {
+        steps[stepNumber] = true;
+        
+        if (stepNumber === 1) {
+            const btn = document.getElementById('btn-zalo');
+            btn.className = 'btn btn-done';
+            btn.innerText = '✓ Đã mở Zalo OA';
+        } else if (stepNumber === 2) {
+            const btn = document.getElementById('btn-google');
+            btn.className = 'btn btn-done';
+            btn.innerText = '✓ Đã mở đánh giá 5★';
+        } else if (stepNumber === 3) {
+            const btn = document.getElementById('btn-fb');
+            btn.className = 'btn btn-done';
+            btn.innerText = '✓ Đã mở Fanpage Facebook';
+        }
+
+        if (steps[1] && steps[2] && steps[3]) {
+            document.getElementById('btn-confirm').disabled = false;
+        }
+    }
+
+    function finishCheckin() {
+        document.getElementById('step-section').style.display = 'none';
+        document.getElementById('success-section').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
